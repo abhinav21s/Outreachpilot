@@ -39,7 +39,7 @@ async function findLookalikes(seedDomain) {
       organization_industries: industry ? [industry] : [],
       q_organization_keyword_tags: keywords,
       page: 1,
-      per_page: 10 
+      per_page: 5 
     }, {
       headers: {
         'Cache-Control': 'no-cache',

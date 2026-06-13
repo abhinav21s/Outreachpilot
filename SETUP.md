@@ -40,13 +40,16 @@ Edit the `.env` file to customize your outreach:
 
 ### Testing without sending to prospects
 
-If you want to test the full pipeline (including Brevo) but want to see the emails in your own inbox first, use:
+If you want to test the full pipeline (including Brevo) without actually emailing the prospects, use the test script:
 
 ```bash
 npm run test-email
 ```
 
-This script redirects all emails to `abhinavsharma.work21@gmail.com` and adds a debug header to each email showing the original intended recipient.
+**How it works:**
+- **Main Pipeline (`npm start`)**: Sends emails to the **actual prospect emails** discovered during the process.
+- **Test Script (`npm run test-email`)**: Intercepts all outgoing emails and redirects them to the `TEST_EMAIL_RECIPIENT` email address defined in your `.env`. 
+- The test email will include a debug header showing who the original recipient was intended to be, along with the full personalized email body.
 
 ## 4. Usage
 

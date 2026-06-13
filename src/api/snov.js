@@ -38,45 +38,86 @@ async function resolveEmail(maker) {
   try {
     const token = await getAccessToken();
 
-    // Snov.io V1 Get Email by Name API (Synchronous for single lookup)
-    const response = await axios.get('https://api.snov.io/v1/get-emails-from-names', {
-      params: {
-        firstName: maker.firstName,
-        lastName: maker.lastName,
-        domain: maker.domain
-      },
+    // Snov.io V1 Get Email by Name API
+    const response = await axios.post('https://api.snov.io/v1/get-emails-from-names', {
+      firstName: maker.firstName,
+      lastName: maker.lastName,
+      domain: maker.domain
+    }, {
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
     });
 
-    // Snov.io returns an array of emails
     const data = response.data;
-    if (data && data.emails && data.emails.length > 0) {
-      // Pick the first email found
-      const bestEmail = data.emails[0];
-      
-      // Snov.io usually provides a status
-      if (bestEmail.status === 'invalid') {
-        logger.warn(`Invalid email found for ${maker.firstName} ${maker.lastName}. Skipping...`);
-        return null;
-      }
 
-      return {
-        ...maker,
-        email: bestEmail.email,
-        verificationStatus: bestEmail.status
-      };
+    // Check if the search is complete and contains email objects
+    if (data && data.success && data.data) {
+        
+      // Handle the case where emails are found
+      if (Array.isArray(data.data.emails)) {
+        // Find the first valid email object in the array
+        const validEmailObject = data.data.emails.find(e => typeof e === 'object' && e.email);
+        
+        if (validEmailObject) {
+          return {
+            ...maker,
+            email: validEmailObject.email,
+            verificationStatus: validEmailObject.emailStatus || 'unknown'
+          };
+        }
+      }
+      
+      // Fallback: If Snov.io says search is in progress or completed but no specific email object was picked up, 
+      // sometimes it provides an email property directly in data.data or similar.
+      // Or if it's "search in Progress", we might want to try another endpoint or just wait.
+      // But for a CLI, we prefer immediate results.
+    }
+
+    // Try a second method if the first one fails: Get Emails by Domain
+    // This is more aggressive but can help if the name-specific one fails.
+    try {
+        const domainResponse = await axios.get('https://api.snov.io/v1/get-domain-emails-with-info', {
+            params: {
+                domain: maker.domain,
+                type: 'all',
+                limit: 100
+            },
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        const domainData = domainResponse.data;
+        if (domainData && domainData.emails) {
+            const found = domainData.emails.find(e => 
+                e.firstName?.toLowerCase() === maker.firstName?.toLowerCase() && 
+                e.lastName?.toLowerCase() === maker.lastName?.toLowerCase()
+            );
+            
+            if (found) {
+                return {
+                    ...maker,
+                    email: found.email,
+                    verificationStatus: found.status || 'unknown'
+                };
+            }
+        }
+    } catch (e) {
+        // Ignore domain search errors, we already tried our best
     }
 
     return null;
 
   } catch (error) {
-    // Snov.io returns 404 or empty if not found
-    if (error.response?.status === 404) {
-        return null;
+    if (error.response?.status === 403) {
+      logger.error(`Snov.io 403 Forbidden: Check credits or API permissions.`);
+    } else if (error.response?.status === 404) {
+      return null;
+    } else {
+      logger.error(`Snov.io API Error for ${maker.firstName} ${maker.lastName}: ${error.response?.data?.message || error.message}`);
     }
-    logger.error(`Snov.io API Error for ${maker.firstName} ${maker.lastName}: ${error.response?.data?.message || error.message}`);
     return null;
   }
 }

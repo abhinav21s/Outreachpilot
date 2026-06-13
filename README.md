@@ -6,6 +6,13 @@ A fully automated cold outreach CLI pipeline built with Node.js.
 
 OutreachPilot automates the entire process of finding similar companies, identifying decision-makers, resolving their verified work emails, and sending personalized outreach emails—all from a single seed domain input.
 
+## Pipeline Modes
+
+OutreachPilot supports two modes of operation:
+
+- **Main Pipeline (`npm start`)**: The production workflow. It identifies real prospects and, after your confirmation, sends personalized emails directly to their **verified work email addresses**.
+- **Test Pipeline (`npm run test-email`)**: A safe testing environment. It runs the full discovery and resolution logic but **redirects all outgoing emails** to the `TEST_EMAIL_RECIPIENT` defined in your `.env` file. This allows you to verify the email content and formatting in your own inbox before going live.
+
 ## Pipeline Stages
 
 1.  **Apollo.io (Lookalike Discovery):** Finds companies with similar industry and firmographics based on your seed domain.
